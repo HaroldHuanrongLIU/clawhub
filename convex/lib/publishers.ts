@@ -11,6 +11,10 @@ type PersonalPublisherAuditOptions = {
   source: string;
 };
 
+type EnsurePersonalPublisherOptions = {
+  handleConflict?: "throw" | "skip";
+};
+
 function isMissingPublisherTableError(error: unknown) {
   if (!(error instanceof Error)) return false;
   return (
@@ -199,6 +203,7 @@ export async function ensurePersonalPublisherForUser(
   ctx: Pick<MutationCtx, "db">,
   user: Doc<"users">,
   audit?: PersonalPublisherAuditOptions,
+  options?: EnsurePersonalPublisherOptions,
 ) {
   const handle = derivePersonalPublisherHandle(user);
   let existing: Doc<"publishers"> | null = null;
@@ -217,6 +222,7 @@ export async function ensurePersonalPublisherForUser(
     const bio = user.bio?.trim() || undefined;
     const conflict = await getPublisherByHandle(ctx, handle);
     if (conflict && conflict._id !== existingPublisher._id) {
+      if (options?.handleConflict === "skip") return existingPublisher;
       throw new ConvexError(`Publisher handle "@${handle}" is already claimed`);
     }
     const nextPublisherFields = {
@@ -279,6 +285,7 @@ export async function ensurePersonalPublisherForUser(
 
   const conflict = await getPublisherByHandle(ctx, handle);
   if (conflict && conflict.linkedUserId !== user._id) {
+    if (options?.handleConflict === "skip") return synthesizePersonalPublisher(user);
     throw new ConvexError(`Publisher handle "@${handle}" is already claimed`);
   }
 

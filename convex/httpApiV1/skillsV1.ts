@@ -44,6 +44,12 @@ type SearchSkillEntry = {
     updatedAt?: number;
   } | null;
   version: { version?: string; createdAt?: number } | null;
+  ownerHandle?: string | null;
+  owner?: {
+    handle?: string | null;
+    displayName?: string | null;
+    image?: string | null;
+  } | null;
 };
 
 type ListSkillsResult = {
@@ -434,14 +440,25 @@ export async function searchSkillsV1Handler(ctx: ActionCtx, request: Request) {
 
   return json(
     {
-      results: results.map((result) => ({
-        score: result.score,
-        slug: result.skill?.slug,
-        displayName: result.skill?.displayName,
-        summary: result.skill?.summary ?? null,
-        version: result.version?.version ?? null,
-        updatedAt: result.skill?.updatedAt,
-      })),
+      results: results.map((result) => {
+        const owner = result.owner
+          ? {
+              handle: result.owner.handle ?? null,
+              displayName: result.owner.displayName ?? null,
+              image: result.owner.image ?? null,
+            }
+          : null;
+        return {
+          score: result.score,
+          slug: result.skill?.slug,
+          displayName: result.skill?.displayName,
+          summary: result.skill?.summary ?? null,
+          version: result.version?.version ?? null,
+          updatedAt: result.skill?.updatedAt,
+          ownerHandle: result.ownerHandle ?? owner?.handle ?? null,
+          owner,
+        };
+      }),
     },
     200,
     rate.headers,

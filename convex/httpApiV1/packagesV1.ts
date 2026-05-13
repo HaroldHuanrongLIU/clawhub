@@ -2037,6 +2037,7 @@ async function searchPackages(
   const url = new URL(request.url);
   const viewerUserId = await getOptionalViewerUserIdForRequest(ctx, request);
   const queryText = url.searchParams.get("q")?.trim() ?? "";
+  if (!queryText) return text("Missing q query parameter", 400, rate.headers);
   const limit = Math.max(1, Math.min(toOptionalNumber(url.searchParams.get("limit")) ?? 20, 100));
   const familyRaw = url.searchParams.get("family");
   const channelRaw = url.searchParams.get("channel");
@@ -2157,7 +2158,7 @@ async function searchPackages(
 export async function packagesGetRouterV1Handler(ctx: ActionCtx, request: Request) {
   const segments = getPathSegments(request, "/api/v1/packages/");
   if (segments.length === 0) return text("Not found", 404);
-  if (segments[0] === "search" && new URL(request.url).searchParams.has("q")) {
+  if (segments[0] === "search" && segments.length === 1) {
     return await searchPackages(ctx, request, { includeSkills: true });
   }
 

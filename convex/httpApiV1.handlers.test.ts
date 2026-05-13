@@ -457,6 +457,49 @@ describe("httpApiV1 handlers", () => {
     });
   });
 
+  it("search includes public owner metadata without publisher bio", async () => {
+    const runAction = vi.fn().mockResolvedValue([
+      {
+        score: 1,
+        skill: { slug: "demo", displayName: "Demo", summary: "Summary", updatedAt: 1 },
+        version: { version: "1.0.0" },
+        ownerHandle: "openclaw",
+        owner: {
+          handle: "openclaw",
+          displayName: "OpenClaw",
+          image: "https://example.com/avatar.png",
+          bio: "private-ish profile text",
+        },
+      },
+    ]);
+    const runMutation = vi.fn().mockResolvedValue(okRate());
+
+    const response = await __handlers.searchSkillsV1Handler(
+      makeCtx({ runAction, runMutation }),
+      new Request("https://example.com/api/v1/search?q=demo"),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      results: [
+        {
+          score: 1,
+          slug: "demo",
+          displayName: "Demo",
+          summary: "Summary",
+          version: "1.0.0",
+          updatedAt: 1,
+          ownerHandle: "openclaw",
+          owner: {
+            handle: "openclaw",
+            displayName: "OpenClaw",
+            image: "https://example.com/avatar.png",
+          },
+        },
+      ],
+    });
+  });
+
   it("search forwards nonSuspiciousOnly", async () => {
     const runAction = vi.fn().mockResolvedValue([]);
     const runMutation = vi.fn().mockResolvedValue(okRate());
@@ -5995,42 +6038,72 @@ describe("httpApiV1 handlers", () => {
     });
   });
 
-  it("treats /packages/search without q as a package detail route", async () => {
+  it("returns 400 for /packages/search without q", async () => {
     const runMutation = vi.fn().mockResolvedValue(okRate());
-    const runQuery = vi.fn(async (_query: unknown, args: Record<string, unknown>) => {
-      if ("name" in args) {
-        return {
-          package: {
-            _id: "packages:search",
-            name: "search",
-            displayName: "Search Package",
-            family: "code-plugin",
-            tags: {},
-            latestReleaseId: null,
-            channel: "community",
-            isOfficial: false,
-            createdAt: 1,
-            updatedAt: 1,
-          },
-          latestRelease: null,
-          owner: null,
-        };
-      }
-      return [];
-    });
+    const runQuery = vi.fn();
 
     const response = await __handlers.packagesGetRouterV1Handler(
       makeCtx({ runQuery, runMutation }),
       new Request("https://example.com/api/v1/packages/search"),
     );
 
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toBe("Missing q query parameter");
+    expect(runQuery).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for /packages/search with blank q", async () => {
+    const runMutation = vi.fn().mockResolvedValue(okRate());
+    const runQuery = vi.fn();
+
+    const response = await __handlers.packagesGetRouterV1Handler(
+      makeCtx({ runQuery, runMutation }),
+      new Request("https://example.com/api/v1/packages/search?q=%20%20"),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toBe("Missing q query parameter");
+    expect(runQuery).not.toHaveBeenCalled();
+  });
+
+  it("routes /packages/search with q to catalog search only", async () => {
+    const runMutation = vi.fn().mockResolvedValue(okRate());
+    const runQuery = vi.fn(async () => []);
+
+    const response = await __handlers.packagesGetRouterV1Handler(
+      makeCtx({ runQuery, runMutation }),
+      new Request("https://example.com/api/v1/packages/search?q=demo"),
+    );
+
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ results: [] });
     expect(runQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        query: "demo",
+      }),
+    );
+    expect(runQuery).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         name: "search",
       }),
     );
+  });
+
+  it("does not treat nested /packages/search paths as catalog search", async () => {
+    const runMutation = vi.fn().mockResolvedValue(okRate());
+    const runQuery = vi.fn(async (_query: unknown, args: Record<string, unknown>) => {
+      if ("name" in args) return null;
+      return [];
+    });
+
+    const response = await __handlers.packagesGetRouterV1Handler(
+      makeCtx({ runQuery, runMutation }),
+      new Request("https://example.com/api/v1/packages/search/extra?q=demo"),
+    );
+
+    expect(response.status).toBe(404);
     expect(runQuery).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

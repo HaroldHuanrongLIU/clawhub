@@ -7,9 +7,15 @@
 - Admin/Ops: audit profile syncs, self-service account/profile changes, personal
   publisher syncs, and org trusted-publisher changes so slug and ownership
   investigations have a complete ledger.
+- CLI/API: include skill owner handles in search results so duplicate/common
+  slugs are easier to disambiguate (thanks @vyctorbrzezowski).
 
 ### Fixes
 
+- Settings: save display name/bio changes even when a legacy personal publisher
+  handle conflict prevents publisher profile sync (#1199).
+- API: return a clear 400 for `/api/v1/packages/search` without a non-empty
+  `q` instead of treating `search` as a package name (thanks @vyctorbrzezowski).
 - Web: rank publisher card preview items by downloads instead of recent publish order (thanks @vyctorbrzezowski).
 - Web: keep skill/plugin detail tabs at mobile-friendly touch target height.
 

@@ -448,10 +448,15 @@ export const updateProfile = mutation({
     });
     const nextUser = await ctx.db.get(userId);
     if (nextUser) {
-      await ensurePersonalPublisherForUser(ctx, nextUser, {
-        actorUserId: userId,
-        source: "user.profile.update",
-      });
+      await ensurePersonalPublisherForUser(
+        ctx,
+        nextUser,
+        {
+          actorUserId: userId,
+          source: "user.profile.update",
+        },
+        { handleConflict: "skip" },
+      );
     }
   },
 });

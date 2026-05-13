@@ -1144,6 +1144,69 @@ describe("users profile audit logs", () => {
     );
   });
 
+  it("saves profile changes when personal publisher handle sync conflicts", async () => {
+    vi.mocked(requireUser).mockResolvedValue({
+      userId: "users:self",
+      user: { _id: "users:self" },
+    } as never);
+    const { ctx, get, insert, patch, query } = makeCtx();
+    get.mockResolvedValue({
+      _id: "users:self",
+      _creationTime: 1,
+      handle: "claimed",
+      displayName: "Old Name",
+      bio: "Old bio",
+      name: "claimed",
+      createdAt: 1,
+    });
+    query.mockImplementation(((table: string) => {
+      if (table === "publishers") {
+        return {
+          withIndex: (name: string) => {
+            if (name === "by_linked_user") {
+              return { unique: vi.fn(async () => null) };
+            }
+            if (name === "by_handle") {
+              return {
+                unique: vi.fn(async () => ({
+                  _id: "publishers:claimed",
+                  _creationTime: 1,
+                  kind: "user",
+                  handle: "claimed",
+                  displayName: "Other User",
+                  linkedUserId: "users:other",
+                  createdAt: 1,
+                  updatedAt: 1,
+                })),
+              };
+            }
+            throw new Error(`Unexpected publishers index ${name}`);
+          },
+        };
+      }
+      throw new Error(`Unexpected table ${table}`);
+    }) as never);
+
+    await updateProfileHandler(ctx, {
+      displayName: "New Name",
+      bio: "New bio",
+    });
+
+    expect(patch).toHaveBeenCalledWith(
+      "users:self",
+      expect.objectContaining({
+        displayName: "New Name",
+        bio: "New bio",
+      }),
+    );
+    expect(insert).toHaveBeenCalledWith(
+      "auditLogs",
+      expect.objectContaining({ action: "user.profile.update" }),
+    );
+    expect(insert).not.toHaveBeenCalledWith("publishers", expect.anything());
+    expect(insert).not.toHaveBeenCalledWith("publisherMembers", expect.anything());
+  });
+
   it("audits self-service account deletion", async () => {
     vi.mocked(requireUser).mockResolvedValue({
       userId: "users:self",
