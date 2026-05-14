@@ -221,7 +221,6 @@ export function Dashboard() {
                   sort: undefined,
                   dir: undefined,
                   highlighted: undefined,
-                  nonSuspicious: true,
                   view: undefined,
                   focus: undefined,
                 }}
