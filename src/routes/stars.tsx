@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { EmptyState } from "../components/EmptyState";
-import { SignInButton } from "../components/SignInButton";
+import { SignInPrompt } from "../components/SignInPrompt";
 import { SkillCard } from "../components/SkillCard";
 import { SkillListItem } from "../components/SkillListItem";
 import { SkillStatsTripletLine } from "../components/SkillStats";
@@ -107,42 +107,11 @@ export function Stars() {
 
   if (!isAuthenticated) {
     return (
-      <main
-        className="relative mx-auto flex min-h-[430px] w-full flex-col overflow-hidden px-4 pb-12 pt-20 sm:px-6 sm:pt-24 lg:px-6"
-        style={{ maxWidth: "var(--page-max)" }}
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-20 inset-x-10 h-64"
-          style={{
-            background:
-              "linear-gradient(to bottom, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 5%, transparent) 42%, transparent 74%)",
-            filter: "blur(2px)",
-            maskImage: "linear-gradient(to right, transparent, black 22%, black 78%, transparent)",
-            WebkitMaskImage:
-              "linear-gradient(to right, transparent, black 22%, black 78%, transparent)",
-          }}
-        />
-        <section className="relative z-10 mx-auto w-full max-w-[980px]">
-          <div className="relative isolate flex min-w-0 flex-col gap-6 overflow-hidden rounded-[var(--radius-md)] border border-[color:var(--line)] bg-[color:var(--surface)] px-5 pb-10 pt-7 shadow-[0_18px_50px_rgba(0,0,0,0.16)] sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-8 sm:pb-10">
-            <div className="min-w-0">
-              <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] border border-[color:var(--line)] bg-[color:var(--surface-muted)] text-[color:var(--ink-soft)] sm:h-12 sm:w-12">
-                <Star size={21} />
-              </span>
-              <h1 className="font-display text-xl font-black leading-tight text-[color:var(--ink)] sm:text-3xl">
-                Sign in to see your highlights
-              </h1>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-[color:var(--ink-soft)] sm:text-base sm:leading-7">
-                Star skills for quick access later.
-              </p>
-            </div>
-            <SignInButton
-              size="sm"
-              className="min-h-10 w-full shrink-0 border-[color-mix(in_srgb,var(--accent)_82%,var(--border-ui))] bg-transparent px-4 text-sm text-[color:var(--ink)] hover:not-disabled:border-[color:var(--accent)] hover:not-disabled:bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] sm:w-auto"
-            />
-          </div>
-        </section>
-      </main>
+      <SignInPrompt
+        icon={Star}
+        title="Sign in to see your highlights"
+        description="Star skills for quick access later."
+      />
     );
   }
 

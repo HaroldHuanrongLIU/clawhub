@@ -6,10 +6,10 @@ import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { ArtifactCard } from "../components/artifacts/ArtifactCard";
 import { packageArtifactStatus, skillArtifactStatus } from "../components/artifacts/artifactStatus";
+import { SignInPrompt } from "../components/SignInPrompt";
 import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
 import { buildSkillHref } from "../components/skillDetailUtils";
 import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
 import {
   Select,
   SelectContent,
@@ -158,11 +158,7 @@ export function Dashboard() {
   }
 
   if (me === null) {
-    return (
-      <main className="section">
-        <Card>Sign in to access your dashboard.</Card>
-      </main>
-    );
+    return <SignInPrompt title="Sign in to access your dashboard." />;
   }
 
   const skills = mySkills ?? [];
