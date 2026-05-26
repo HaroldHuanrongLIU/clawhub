@@ -2665,6 +2665,159 @@ export const getSkillBySlugInternal = internalQuery({
   },
 });
 
+function compactSecurityVerdictVersion(version: Doc<"skillVersions">) {
+  return {
+    _id: version._id,
+    version: version.version,
+    createdAt: version.createdAt,
+    softDeletedAt: version.softDeletedAt,
+    ...(version.staticScan
+      ? {
+          staticScan: {
+            status: version.staticScan.status,
+            reasonCodes: version.staticScan.reasonCodes,
+            summary: version.staticScan.summary,
+            engineVersion: version.staticScan.engineVersion,
+            checkedAt: version.staticScan.checkedAt,
+          },
+        }
+      : {}),
+    ...(version.llmAnalysis
+      ? {
+          llmAnalysis: {
+            status: version.llmAnalysis.status,
+            ...(version.llmAnalysis.verdict !== undefined
+              ? { verdict: version.llmAnalysis.verdict }
+              : {}),
+            ...(version.llmAnalysis.confidence !== undefined
+              ? { confidence: version.llmAnalysis.confidence }
+              : {}),
+            ...(version.llmAnalysis.summary !== undefined
+              ? { summary: version.llmAnalysis.summary }
+              : {}),
+            ...(version.llmAnalysis.model !== undefined
+              ? { model: version.llmAnalysis.model }
+              : {}),
+            checkedAt: version.llmAnalysis.checkedAt,
+          },
+        }
+      : {}),
+    ...(version.vtAnalysis
+      ? {
+          vtAnalysis: {
+            status: version.vtAnalysis.status,
+            ...(version.vtAnalysis.verdict !== undefined
+              ? { verdict: version.vtAnalysis.verdict }
+              : {}),
+            ...(version.vtAnalysis.source !== undefined
+              ? { source: version.vtAnalysis.source }
+              : {}),
+            checkedAt: version.vtAnalysis.checkedAt,
+          },
+        }
+      : {}),
+    ...(version.skillSpectorAnalysis
+      ? {
+          skillSpectorAnalysis: {
+            status: version.skillSpectorAnalysis.status,
+            ...(version.skillSpectorAnalysis.score !== undefined
+              ? { score: version.skillSpectorAnalysis.score }
+              : {}),
+            ...(version.skillSpectorAnalysis.severity !== undefined
+              ? { severity: version.skillSpectorAnalysis.severity }
+              : {}),
+            ...(version.skillSpectorAnalysis.recommendation !== undefined
+              ? { recommendation: version.skillSpectorAnalysis.recommendation }
+              : {}),
+            issueCount: version.skillSpectorAnalysis.issueCount,
+            ...(version.skillSpectorAnalysis.scannerVersion !== undefined
+              ? { scannerVersion: version.skillSpectorAnalysis.scannerVersion }
+              : {}),
+            checkedAt: version.skillSpectorAnalysis.checkedAt,
+          },
+        }
+      : {}),
+    ...(version.depRegistryAnalysis
+      ? {
+          depRegistryAnalysis: {
+            status: version.depRegistryAnalysis.status,
+            summary: version.depRegistryAnalysis.summary,
+            checkedAt: version.depRegistryAnalysis.checkedAt,
+          },
+        }
+      : {}),
+  };
+}
+
+export const getSecurityVerdictTargetInternal = internalQuery({
+  args: { slug: v.string(), version: v.string() },
+  handler: async (ctx, args) => {
+    const resolved = await resolveSkillBySlugOrAlias(ctx, args.slug);
+    const skill = resolved.skill;
+    if (!skill) return null;
+
+    const isMalwareBlocked = skill.moderationFlags?.includes("blocked.malware") ?? false;
+    const isSuspicious = skill.moderationFlags?.includes("flagged.suspicious") ?? false;
+    const isReviewFlagged = isSkillReviewFlagged(skill);
+    const overrideActive = Boolean(skill.manualOverride);
+    if (!isPublicSkillDoc(skill) && !isMalwareBlocked) return null;
+
+    const owner = toPublicPublisher(
+      await getOwnerPublisher(ctx, {
+        ownerPublisherId: skill.ownerPublisherId,
+        ownerUserId: skill.ownerUserId,
+      }),
+    );
+    if (!owner) return null;
+
+    const version = await ctx.db
+      .query("skillVersions")
+      .withIndex("by_skill_version", (q) => q.eq("skillId", skill._id).eq("version", args.version))
+      .unique();
+    const isPendingScan =
+      skill.moderationStatus === "hidden" && skill.moderationReason === "pending.scan";
+    const isHiddenByMod =
+      skill.moderationStatus === "hidden" && !isPendingScan && !isMalwareBlocked;
+    const isRemoved = skill.moderationStatus === "removed";
+    const showModerationInfo =
+      isMalwareBlocked || isSuspicious || isReviewFlagged || overrideActive;
+    const publicModerationSummary =
+      overrideActive && !isMalwareBlocked && !isSuspicious
+        ? "Security findings were reviewed by moderators and cleared for public use."
+        : skill.moderationSummary;
+
+    return {
+      skill: {
+        _id: skill._id,
+        slug: skill.slug,
+        displayName: skill.displayName,
+      },
+      owner: {
+        _id: owner._id,
+        handle: owner.handle ?? null,
+        displayName: owner.displayName ?? null,
+      },
+      moderationInfo: showModerationInfo
+        ? {
+            isPendingScan,
+            isMalwareBlocked,
+            isSuspicious,
+            isReviewFlagged,
+            isHiddenByMod,
+            isRemoved,
+            overrideActive,
+            verdict: skill.moderationVerdict,
+            reasonCodes: skill.moderationReasonCodes,
+            summary: publicModerationSummary,
+            engineVersion: skill.moderationEngineVersion,
+            updatedAt: skill.moderationEvaluatedAt,
+          }
+        : null,
+      version: version ? compactSecurityVerdictVersion(version) : null,
+    };
+  },
+});
+
 export const getOwnerSkillActivityInternal = internalQuery({
   args: {
     ownerUserId: v.id("users"),
