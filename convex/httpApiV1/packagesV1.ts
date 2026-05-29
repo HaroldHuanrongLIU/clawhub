@@ -1097,9 +1097,8 @@ function bytesToArrayBuffer(bytes: Uint8Array) {
 }
 
 async function storeClawPackFile(ctx: ActionCtx, entry: { path: string; bytes: Uint8Array }) {
-  if (entry.bytes.byteLength > MAX_PUBLISH_FILE_BYTES) {
-    throw new Error(getPublishFileSizeError(entry.path));
-  }
+  // npm-pack artifacts are bounded by the tarball and total package limits; the
+  // legacy per-file cap only applies to raw file uploads.
   const contentType = inferStoredPackageContentType(entry.path);
   const storageId = await ctx.storage.store(
     new Blob([bytesToArrayBuffer(entry.bytes)], { type: contentType }),

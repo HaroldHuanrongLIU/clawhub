@@ -3,6 +3,7 @@ import { gzipSync, unzipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "./_generated/api";
 import { RATE_LIMITS } from "./lib/httpRateLimit";
+import { MAX_PUBLISH_FILE_BYTES } from "./lib/publishLimits";
 
 vi.mock("@convex-dev/auth/server", () => ({
   getAuthUserId: vi.fn(),
@@ -9572,6 +9573,7 @@ describe("httpApiV1 handlers", () => {
       "package/package.json": JSON.stringify({ name: "demo-plugin", version: "1.0.0" }),
       "package/openclaw.plugin.json": JSON.stringify({ id: "demo.plugin" }),
       "package/dist/index.js": "export const demo = true;\n",
+      "package/assets/viewer-runtime.js": "x".repeat(MAX_PUBLISH_FILE_BYTES + 1),
     });
     const form = new FormData();
     form.set(
@@ -9604,7 +9606,7 @@ describe("httpApiV1 handlers", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(storageStore).toHaveBeenCalledTimes(4);
+    expect(storageStore).toHaveBeenCalledTimes(5);
     expect(runAction).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -9613,12 +9615,17 @@ describe("httpApiV1 handlers", () => {
             kind: "npm-pack",
             storageId: "storage:1",
             size: pack.byteLength,
-            npmFileCount: 3,
+            npmFileCount: 4,
           }),
           files: [
             expect.objectContaining({ path: "package.json", storageId: "storage:2" }),
             expect.objectContaining({ path: "openclaw.plugin.json", storageId: "storage:3" }),
             expect.objectContaining({ path: "dist/index.js", storageId: "storage:4" }),
+            expect.objectContaining({
+              path: "assets/viewer-runtime.js",
+              storageId: "storage:5",
+              size: MAX_PUBLISH_FILE_BYTES + 1,
+            }),
           ],
         }),
       }),
