@@ -7,6 +7,7 @@ import { Container } from "../../components/layout/Container";
 import { SignInButton } from "../../components/SignInButton";
 import { SignInPrompt } from "../../components/SignInPrompt";
 import { AuthFlowSkeleton } from "../../components/skeletons/ProtectedPageSkeletons";
+import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { getClawHubSiteUrl, normalizeClawHubSiteOrigin } from "../../lib/site";
 import { useAuthError } from "../../lib/useAuthError";
@@ -36,6 +37,7 @@ export function CliAuth({
   const [status, setStatus] = useState<string>("Preparing...");
   const [token, setToken] = useState<string | null>(null);
   const [callbackUrl, setCallbackUrl] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const hasRun = useRef(false);
 
   const redirectUri = search.redirect_uri ?? "";
@@ -56,6 +58,7 @@ export function CliAuth({
     if (!safeRedirect) return;
     if (!state) return;
     if (!isAuthenticated || !me) return;
+    if (!confirmed) return;
     hasRun.current = true;
 
     const run = async () => {
@@ -85,6 +88,7 @@ export function CliAuth({
     });
   }, [
     createToken,
+    confirmed,
     isAuthenticated,
     label,
     me,
@@ -151,6 +155,31 @@ export function CliAuth({
     );
   }
 
+  if (!confirmed) {
+    return (
+      <main className="py-10">
+        <Container size="narrow">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">CLI login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 text-sm text-[color:var(--ink-soft)]">
+                <p>
+                  Create an API token for <strong>{label}</strong> and send it to{" "}
+                  <code>{formatRedirectTarget(redirectUri)}</code>.
+                </p>
+                <Button type="button" onClick={() => setConfirmed(true)}>
+                  Create token
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Container>
+      </main>
+    );
+  }
+
   return (
     <main className="py-10">
       <Container size="narrow">
@@ -179,6 +208,15 @@ export function CliAuth({
       </Container>
     </main>
   );
+}
+
+function formatRedirectTarget(value: string) {
+  try {
+    const url = new URL(value);
+    return `${url.hostname}${url.port ? `:${url.port}` : ""}`;
+  } catch {
+    return value;
+  }
 }
 
 function isAllowedRedirectUri(value: string) {

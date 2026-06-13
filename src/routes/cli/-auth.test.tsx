@@ -1,5 +1,5 @@
 /* @vitest-environment jsdom */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const createTokenMock = vi.fn();
@@ -67,6 +67,12 @@ vi.mock("../../components/ui/card", () => ({
   CardTitle: ({ children }: { children: React.ReactNode }) => <h1>{children}</h1>,
 }));
 
+vi.mock("../../components/ui/button", () => ({
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
+  ),
+}));
+
 const { CliAuth } = await import("./auth");
 
 describe("CliAuth", () => {
@@ -87,10 +93,17 @@ describe("CliAuth", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the fallback token and retry link before attempting redirect", async () => {
+  it("requires confirmation before creating the token and attempting redirect", async () => {
     createTokenMock.mockResolvedValue({ token: "clh_test_token" });
 
     render(<CliAuth navigate={assignSpy} />);
+
+    expect(createTokenMock).not.toHaveBeenCalled();
+    expect(assignSpy).not.toHaveBeenCalled();
+    expect(screen.getByText(/send it to/i)).toBeTruthy();
+    expect(screen.getByText("127.0.0.1:43110")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Create token/i }));
 
     await waitFor(() => {
       expect(createTokenMock).toHaveBeenCalledWith({ label: "CLI token" });
