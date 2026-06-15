@@ -729,8 +729,8 @@ function PluginDetailPageContent({ name, loaderData }: PluginDetailPageProps) {
                   density="compact"
                   blocks={[
                     {
-                      label: "Downloads",
-                      value: formatCompactStat(pkg.stats?.downloads ?? 0),
+                      label: "Installs",
+                      value: formatCompactStat(pkg.stats?.installs ?? 0),
                       large: true,
                     },
                     { label: "Repository", value: sourceRepoLink },

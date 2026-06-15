@@ -1168,6 +1168,8 @@ const packages = defineTable({
   .index("by_active_updated", ["softDeletedAt", "updatedAt"])
   .index("by_active_downloads", ["softDeletedAt", "stats.downloads", "updatedAt"])
   .index("by_active_family_downloads", ["softDeletedAt", "family", "stats.downloads", "updatedAt"])
+  .index("by_active_installs", ["softDeletedAt", "stats.installs", "updatedAt"])
+  .index("by_active_family_installs", ["softDeletedAt", "family", "stats.installs", "updatedAt"])
   .index("by_active_recommended_rank", [
     "softDeletedAt",
     "stats.stars",
@@ -2377,6 +2379,25 @@ const downloadMetricDedupes = defineTable({
   ])
   .index("by_day", ["dayStart"]);
 
+const packageInstallMetricDedupes = defineTable({
+  targetKind: v.literal("package"),
+  targetId: v.id("packages"),
+  metricKind: v.literal("install"),
+  identityKind: downloadMetricIdentityKind,
+  identityHash: v.string(),
+  dayStart: v.number(),
+  createdAt: v.number(),
+})
+  .index("by_target_metric_identity_day", [
+    "targetKind",
+    "targetId",
+    "metricKind",
+    "identityKind",
+    "identityHash",
+    "dayStart",
+  ])
+  .index("by_day", ["dayStart"]);
+
 const reservedSlugs = defineTable({
   slug: v.string(),
   originalOwnerUserId: v.id("users"),
@@ -2560,6 +2581,7 @@ export default defineSchema({
   rateLimitShards,
   downloadDedupes,
   downloadMetricDedupes,
+  packageInstallMetricDedupes,
   reservedSlugs,
   reservedHandles,
   githubBackupSyncState,
