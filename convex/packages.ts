@@ -9384,7 +9384,7 @@ export const updateReleaseScanResultsInternal = internalMutation({
 export const updateReleaseSkillSpectorAnalysisInternal = internalMutation({
   args: {
     releaseId: v.id("packageReleases"),
-    skillSpectorAnalysis: skillSpectorAnalysisValidator,
+    skillSpectorAnalysis: v.optional(skillSpectorAnalysisValidator),
   },
   handler: async (ctx, args) => {
     const release = await ctx.db.get(args.releaseId);
