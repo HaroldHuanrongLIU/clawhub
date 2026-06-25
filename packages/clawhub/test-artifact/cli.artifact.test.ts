@@ -1,7 +1,7 @@
 /* @vitest-environment node */
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -321,6 +321,20 @@ describe("built CLI artifact", () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("ClawHub CLI");
+  });
+
+  it("reports a controlled error when the built CLI module is missing", async () => {
+    const backupPath = `${distCliPath}.clawhub-artifact-backup`;
+    await rename(distCliPath, backupPath);
+    try {
+      const result = runNode([binPath, "--help"]);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toMatch(/^clawhub: failed to load CLI: Cannot find module /);
+    } finally {
+      await rename(backupPath, distCliPath);
+    }
   });
 
   it("prints help by default", async () => {
