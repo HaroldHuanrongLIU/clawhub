@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   detectPinnedPluginInspectorChange,
+  EMPTY_TREE_SHA,
+  normalizeBaseSha,
   readPinnedPluginInspectorVersion,
 } from "./plugin-inspector-pin-change.mjs";
 
@@ -18,6 +20,11 @@ const packageJsonsByPath = (rootVersion, cliVersion = rootVersion) => ({
 });
 
 describe("plugin inspector pin change detection", () => {
+  it("uses the empty tree for an initial push base SHA", () => {
+    expect(normalizeBaseSha("0".repeat(40))).toBe(EMPTY_TREE_SHA);
+    expect(normalizeBaseSha("abc123")).toBe("abc123");
+  });
+
   it("detects merged changes to the pinned plugin inspector dependency", () => {
     expect(
       detectPinnedPluginInspectorChange({

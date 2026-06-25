@@ -4,8 +4,13 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const DEPENDENCY_NAME = "@openclaw/plugin-inspector";
+export const EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const PACKAGE_MANIFEST_FILES = ["package.json", "packages/clawhub/package.json"];
 const PACKAGE_MANAGER_FILES = new Set([...PACKAGE_MANIFEST_FILES, "bun.lock"]);
+
+export function normalizeBaseSha(base) {
+  return base === "0".repeat(40) ? EMPTY_TREE_SHA : base;
+}
 
 export function readPinnedPluginInspectorVersion(packageJsonText) {
   const parsed = JSON.parse(packageJsonText);
@@ -103,6 +108,9 @@ function git(args) {
 }
 
 function readPackageJsonsAt(ref) {
+  if (ref === EMPTY_TREE_SHA) {
+    return Object.fromEntries(PACKAGE_MANIFEST_FILES.map((file) => [file, "{}"]));
+  }
   return Object.fromEntries(
     PACKAGE_MANIFEST_FILES.map((file) => [file, git(["show", `${ref}:${file}`])]),
   );
@@ -129,9 +137,10 @@ function writeOutput(result) {
 
 export function main(argv = process.argv.slice(2)) {
   const { base, head } = parseArgs(argv);
+  const normalizedBase = normalizeBaseSha(base);
   const result = detectPinnedPluginInspectorChange({
-    changedFiles: changedFilesBetween(base, head),
-    basePackageJsonByPath: readPackageJsonsAt(base),
+    changedFiles: changedFilesBetween(normalizedBase, head),
+    basePackageJsonByPath: readPackageJsonsAt(normalizedBase),
     headPackageJsonByPath: readPackageJsonsAt(head),
   });
   writeOutput(result);

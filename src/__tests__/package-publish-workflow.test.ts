@@ -112,6 +112,10 @@ describe("package publish workflow", () => {
     expect(workflowText).toContain("dry_run=false");
     expect(workflowText).toContain("BASE_SHA: ${{ github.event.before }}");
     expect(workflowText).toContain("HEAD_SHA: ${{ github.sha }}");
+    expect(workflowText).toContain(
+      'if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]',
+    );
+    expect(workflowText).toContain("skipping fetch for the all-zero base SHA");
     expect(workflowText).toContain("source_sha=${{ github.sha }}");
     expect(workflowText).not.toContain("pull_request_target");
   });
