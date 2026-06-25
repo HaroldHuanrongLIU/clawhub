@@ -155,4 +155,5 @@ jobs:
             echo "Dispatched ClawSweeper comment router."
           else
             echo "::warning::Skipping ClawSweeper comment dispatch because the configured credential could not dispatch to openclaw/clawsweeper."
+            exit 1
           fi
