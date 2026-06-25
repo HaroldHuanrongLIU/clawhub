@@ -22,9 +22,7 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  statuses: read
+permissions: {}
 
 jobs:
   validate-deploy-request:
@@ -76,15 +74,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: validate-deploy-request
+    outputs:
+      deployment_url: ${{ steps.vercel.outputs.deployment_url }}
+    permissions:
+      contents: read
+      statuses: read
     environment:
       name: Production
       url: https://clawhub.ai
     env:
-      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-      PLAYWRIGHT_AUTH_STORAGE_STATE_JSON: ${{ secrets.PLAYWRIGHT_AUTH_STORAGE_STATE_JSON }}
       PLAYWRIGHT_BASE_URL: https://clawhub.ai
     steps:
       - name: Check deploy configuration
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: |
           set -euo pipefail
           missing=()
@@ -101,10 +104,6 @@ jobs:
           echo "Deploy target: ${{ needs.validate-deploy-request.outputs.target }}"
           echo "Allow deleting large Convex indexes: ${{ inputs.allow_deleting_large_indexes }}"
 
-          if [[ -z "$PLAYWRIGHT_AUTH_STORAGE_STATE_JSON" ]]; then
-            echo "PLAYWRIGHT_AUTH_STORAGE_STATE_JSON not set; authenticated smoke will be skipped."
-          fi
-
       - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
@@ -116,14 +115,20 @@ jobs:
 
       - name: Stamp Convex build SHA
         if: needs.validate-deploy-request.outputs.deploy_backend == 'true'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: bunx convex env set APP_BUILD_SHA "${GITHUB_SHA}" --prod
 
       - name: Stamp Convex deploy time
         if: needs.validate-deploy-request.outputs.deploy_backend == 'true'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: bunx convex env set APP_DEPLOYED_AT "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" --prod
 
       - name: Deploy Convex
         if: needs.validate-deploy-request.outputs.deploy_backend == 'true'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: |
           set -euo pipefail
           if [[ "${{ inputs.allow_deleting_large_indexes }}" == "true" ]]; then
@@ -134,6 +139,8 @@ jobs:
 
       - name: Verify Convex contract
         if: needs.validate-deploy-request.outputs.deploy_backend == 'true'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: bun run verify:convex-contract -- --prod
 
       - name: Wait for Vercel production deployment
@@ -196,8 +203,14 @@ jobs:
         run: bun run test:e2e:prod-http
 
       - name: Write authenticated storage state
-        if: needs.validate-deploy-request.outputs.run_smoke == 'true' && needs.validate-deploy-request.outputs.deploy_frontend == 'true' && env.PLAYWRIGHT_AUTH_STORAGE_STATE_JSON != ''
+        if: needs.validate-deploy-request.outputs.run_smoke == 'true' && needs.validate-deploy-request.outputs.deploy_frontend == 'true'
+        env:
+          PLAYWRIGHT_AUTH_STORAGE_STATE_JSON: ${{ secrets.PLAYWRIGHT_AUTH_STORAGE_STATE_JSON }}
         run: |
+          if [[ -z "$PLAYWRIGHT_AUTH_STORAGE_STATE_JSON" ]]; then
+            echo "PLAYWRIGHT_AUTH_STORAGE_STATE_JSON not set; authenticated smoke will be skipped."
+            exit 0
+          fi
           echo "$PLAYWRIGHT_AUTH_STORAGE_STATE_JSON" > "$RUNNER_TEMP/playwright-auth.json"
           echo "PLAYWRIGHT_AUTH_STORAGE_STATE=$RUNNER_TEMP/playwright-auth.json" >> "$GITHUB_ENV"
 
@@ -205,11 +218,24 @@ jobs:
         if: needs.validate-deploy-request.outputs.run_smoke == 'true' && needs.validate-deploy-request.outputs.deploy_frontend == 'true'
         run: bunx playwright test --workers=1 e2e/menu-smoke.pw.test.ts e2e/publish-entry-workflows.pw.test.ts e2e/upload-auth-smoke.pw.test.ts
 
+  tag-production-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - validate-deploy-request
+      - deploy-production
+    if: needs.validate-deploy-request.outputs.deploy_frontend == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Tag production frontend deployment
-        if: needs.validate-deploy-request.outputs.deploy_frontend == 'true'
         env:
           DEPLOY_TARGET: ${{ needs.validate-deploy-request.outputs.target }}
-          DEPLOYMENT_URL: ${{ steps.vercel.outputs.deployment_url }}
+          DEPLOYMENT_URL: ${{ needs.deploy-production.outputs.deployment_url }}
         run: |
           set -euo pipefail
           deployed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
