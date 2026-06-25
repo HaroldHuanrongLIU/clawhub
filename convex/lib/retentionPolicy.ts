@@ -200,12 +200,15 @@ export const RETENTION_POLICIES = {
     prune: "usage-time expiry plus pending retention cleanup",
     retention: "Device code TTL.",
   }),
-  rateLimitCounters: ephemeral("Active rate-limit counters expire after their rate-limit window.", {
-    expirationField: "expiresAt",
-    expirationIndex: "by_expires_at",
-    prune: "rateLimits.pruneRateLimitCountersInternal",
-    retention: "Rate-limit window plus buffer.",
-  }),
+  httpRateLimitKeys: ephemeral(
+    "Component-backed HTTP rate-limit key metadata is operational cleanup state.",
+    {
+      expirationField: "expiresAt",
+      expirationIndex: "by_expires_at",
+      prune: "rateLimits.pruneHttpRateLimitKeysInternal",
+      retention: "Idle component key window plus buffer before component reset.",
+    },
+  ),
   downloadMetricDedupes: ephemeral(
     "Download dedupe rows are only needed for recent metric windows.",
     {

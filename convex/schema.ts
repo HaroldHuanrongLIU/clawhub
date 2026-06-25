@@ -2727,17 +2727,15 @@ const cliDeviceCodes = defineTable({
   .index("by_user_code_hash", ["userCodeHash"])
   .index("by_status_expires", ["status", "expiresAt"]);
 
-const rateLimitCounters = defineTable({
+const httpRateLimitKeys = defineTable({
+  name: v.string(),
   key: v.string(),
-  windowStart: v.number(),
-  shard: v.number(),
-  count: v.number(),
-  limit: v.number(),
-  updatedAt: v.number(),
+  shard: v.optional(v.number()),
+  lastTouchedAt: v.number(),
   expiresAt: v.number(),
 })
-  .index("by_key_window", ["key", "windowStart"])
-  .index("by_key_window_shard", ["key", "windowStart", "shard"])
+  .index("by_name_and_key_and_shard", ["name", "key", "shard"])
+  .index("by_name_and_key_and_expires_at", ["name", "key", "expiresAt"])
   .index("by_expires_at", ["expiresAt"]);
 
 const downloadMetricTargetKind = v.union(v.literal("skill"), v.literal("package"));
@@ -2955,7 +2953,7 @@ export default defineSchema({
   vtScanLogs,
   apiTokens,
   cliDeviceCodes,
-  rateLimitCounters,
+  httpRateLimitKeys,
   downloadMetricDedupes,
   packageInstallMetricDedupes,
   installTelemetryDedupes,

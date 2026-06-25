@@ -39,14 +39,17 @@ Enforcement model:
 
 Headers:
 
-- Legacy compatibility: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
-- Standardized: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`
+- Legacy compatibility: `X-RateLimit-Limit`, `X-RateLimit-Reset`
+- Standardized: `RateLimit-Limit`, `RateLimit-Reset`
+- On `429`: `X-RateLimit-Remaining: 0` and `RateLimit-Remaining: 0`
 - On `429`: `Retry-After`
 
 Header semantics:
 
 - `X-RateLimit-Reset`: absolute Unix epoch seconds
 - `RateLimit-Reset`: seconds until reset (delay)
+- `X-RateLimit-Remaining` / `RateLimit-Remaining`: exact remaining budget when present.
+  Sharded successful requests omit this header instead of returning an approximate global value.
 - `Retry-After`: seconds to wait before retry (delay) on `429`
 
 Example `429` response:
@@ -73,9 +76,13 @@ Client guidance:
 
 IP source:
 
-- Uses `cf-connecting-ip` (Cloudflare) for client IP by default.
+- Uses trusted client IP headers, including `cf-connecting-ip`, only when the
+  deployment explicitly enables trusted forwarded headers.
 - ClawHub uses trusted forwarding headers to identify client IPs at the edge.
-- If no trusted client IP is available, anonymous download requests use an endpoint-scoped fallback bucket instead of one global `ip:unknown` bucket. Anonymous read/write requests still use the shared unknown bucket so missing-IP routing remains visible and conservative.
+- If no trusted client IP is available, anonymous requests use fallback buckets
+  scoped only by rate-limit kind. These fallback buckets do not include
+  caller-supplied paths, slugs, package names, versions, query strings, or other
+  artifact parameters.
 
 ## Error responses
 
