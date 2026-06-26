@@ -307,6 +307,7 @@ jobs:
           import json
           import os
           import shlex
+          import uuid
           from pathlib import Path
           from urllib.error import HTTPError
           from urllib.parse import quote, urlparse
@@ -493,12 +494,18 @@ jobs:
           path.chmod(0o755)
           print(shell_line)
 
+          def write_output(fh, name, value):
+              delimiter = f"ghadelimiter_{uuid.uuid4().hex}"
+              while delimiter in value:
+                  delimiter = f"ghadelimiter_{uuid.uuid4().hex}"
+              fh.write(f"{name}<<{delimiter}\n{value}\n{delimiter}\n")
+
           output_path = Path(os.environ["GITHUB_OUTPUT"])
           with output_path.open("a", encoding="utf-8") as fh:
-              fh.write(f"inspect_checkout_repository={inspect_checkout_repository}\n")
-              fh.write(f"inspect_checkout_ref={inspect_checkout_ref}\n")
-              fh.write(f"inspect_local_root={inspect_local_root}\n")
-              fh.write(f"inspect_subdir={inspect_subdir}\n")
+              write_output(fh, "inspect_checkout_repository", inspect_checkout_repository)
+              write_output(fh, "inspect_checkout_ref", inspect_checkout_ref)
+              write_output(fh, "inspect_local_root", inspect_local_root)
+              write_output(fh, "inspect_subdir", inspect_subdir)
           PY
 
       - name: Extract prebuilt package artifact for plugin validation

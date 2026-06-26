@@ -25,6 +25,8 @@ describe("package publish workflow", () => {
     expect(workflow).toContain("resolve_github_url_ref_and_path");
     expect(workflow).toContain("quote(ref, safe='')");
     expect(workflow).toContain("error.code in (404, 422)");
+    expect(workflow).toContain('delimiter = f"ghadelimiter_{uuid.uuid4().hex}"');
+    expect(workflow).toContain('write_output(fh, "inspect_subdir", inspect_subdir)');
     expect(workflow).toContain("package validate");
     expect(workflow).not.toContain('config_path = root / ".plugin-inspector.json"');
     expect(workflow).not.toContain("generated_config_path.write_text(str(config_path)");
